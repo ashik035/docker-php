@@ -1,0 +1,17 @@
+# Build the nginx server
+docker build --no-cache -t laravel-nginx .
+
+# Run the nginx server
+docker run --rm -p 80:80 -v /home/alam/code/laravel-docker/src:/var/www/html/public laravel-nginx
+
+# Build the php container
+docker compose -p md build php --no-cache
+
+# Build the project
+docker compose -p md up -d --build site
+
+# Run the server
+docker compose -p md up -d site
+
+# NPM Bash
+docker compose run --rm node bash

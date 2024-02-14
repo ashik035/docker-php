@@ -1,0 +1,100 @@
+version: '3.9'
+
+services:
+  site:
+    build:
+      context: .
+      dockerfile: dockerfiles/nginx.dockerfile
+    container_name: "site"
+    ports:
+      - 80:80
+    volumes:
+      - ../src:/var/www/html
+    networks:
+      - nw_frontend_pm
+      - nw_backend_pm
+    depends_on:
+      - php
+
+  mysql:
+    image: mysql:8.0
+    container_name: "database"
+    tty: true
+    ports:
+      - 3306:3306
+    restart: "on-failure"
+    env_file:
+      - ./env/mysql.env
+    networks:
+      - nw_backend_pm
+    volumes:
+      - ./mysql:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: "phpmyadmin"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: school
+      PMA_PASSWORD: school123
+    networks:
+      - nw_backend_pm
+    ports:
+      - "8080:80"
+
+  php:
+    build:
+      context: .
+      dockerfile: dockerfiles/php.dockerfile
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    container_name: "php"
+    ports:
+      - 9000:9000
+    volumes:
+      - ../src:/var/www/html:delegated
+    networks:
+      - nw_frontend_pm
+      - nw_backend_pm
+    depends_on:
+      - mysql
+      - phpmyadmin
+
+  node:
+      image: node:20.8.1-slim
+      container_name: "node"
+      user: node
+      networks:
+        - nw_frontend_pm
+        - nw_backend_pm
+      tty: true
+      ports:
+        - "3080:3080"
+        - "3000:3000"
+        - "3001:3001"
+      volumes:
+        - ../src:/var/www/html:rw
+      working_dir: /var/www/html
+      # command: bash -c "chown -R node:node /var/www/html"
+
+  cache:
+    image: redis:7.0.4
+    container_name: cache
+    ports:
+      - 63790:6379
+    volumes:
+      - ./redis/data:/data
+    networks:
+      - nw_backend_pm
+
+#
+# Network Definition
+#
+
+networks:
+  nw_frontend_pm:
+    external: true
+  nw_backend_pm:
+    external: true
